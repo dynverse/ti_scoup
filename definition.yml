@@ -1,6 +1,6 @@
 id: scoup
-docker_repository: dynverse/dynmethods:scoup
-container_url: https://github.com/dynverse/dynmethods/tree/master/containers/scoup
+docker_repository: dynverse/ti_scoup
+container_url: https://github.com/dynverse/ti_scoup
 name: SCOUP
 type: algorithm
 platform: C++
