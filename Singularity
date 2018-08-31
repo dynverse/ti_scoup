@@ -8,9 +8,10 @@ Bootstrap: shub
 From: dynverse/dynwrap:r
 
 %labels
-    version 0.1.0
+    version 0.1.1
 
 %post
+    chmod -R a+r /code
     git clone https://github.com/hmatsu1226/SCOUP.git && cd SCOUP && make all
 
 %files
