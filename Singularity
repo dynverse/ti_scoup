@@ -10,13 +10,12 @@ From: dynverse/dynwrap:r
 %labels
     version 0.1.1
 
-%post
-    chmod -R a+r /code
-    chmod a+x /code
-    git clone https://github.com/hmatsu1226/SCOUP.git && cd SCOUP && make all
-
 %files
     . /code
+
+%post
+    chmod -R 755 '/code'
+    git clone https://github.com/hmatsu1226/SCOUP.git && cd SCOUP && make all
 
 %runscript
     exec Rscript /code/run.R
