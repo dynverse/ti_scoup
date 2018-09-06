@@ -1,5 +1,6 @@
 id: scoup
 docker_repository: dynverse/ti_scoup
+singularity_collection: 1576
 container_url: https://github.com/dynverse/ti_scoup
 name: SCOUP
 type: algorithm
