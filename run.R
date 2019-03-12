@@ -1,3 +1,7 @@
+#!/usr/local/bin/Rscript
+
+task <- dyncli::main()
+
 library(jsonlite)
 library(readr)
 library(dplyr)
@@ -6,19 +10,11 @@ library(purrr)
 #   ____________________________________________________________________________
 #   Load data                                                               ####
 
-data <- read_rds("/ti/input/data.rds")
-params <- jsonlite::read_json("/ti/input/params.json")
-
-#' @examples
-#' data <- dyntoy::generate_dataset(id = "test", num_cells = 300, num_features = 300, model = "linear") %>% c(., .$prior_information)
-#' params <- yaml::read_yaml("containers/scoup/definition.yml")$parameters %>%
-#'   {.[names(.) != "forbidden"]} %>%
-#'   map(~ .$default)
-
-expression <- data$expression
-groups_id <- data$groups_id
-start_id <- data$start_id
-end_n <- data$end_n
+expression <- as.matrix(task$expression)
+params <- task$params
+groups_id <- task$priors$groups_id
+start_id <- task$priors$start_id
+end_n <- task$priors$end_n
 
 #   ____________________________________________________________________________
 #   Infer trajectory                                                        ####
@@ -63,10 +59,10 @@ cmd <- paste0(
   " -k ", end_n,
   " -m ", params$max_ite1,
   " -M ", params$max_ite2,
-  " -a ", params$alpha_min,
-  " -A ", params$alpha_max,
-  " -t ", params$t_min,
-  " -T ", params$t_max,
+  " -a ", params$alpha[1],
+  " -A ", params$alpha[2],
+  " -t ", params$t[1],
+  " -T ", params$t[2],
   " -s ", params$sigma_squared_min,
   " -e ", params$thresh
 )
@@ -78,7 +74,7 @@ dimred <- utils::read.table("dimred", col.names = c("i", paste0("Comp", seq_len(
 
 # last line is root node
 root <- dimred[nrow(dimred),-1,drop=F]
-dimred <- dimred[-nrow(dimred),-1]
+dimred <- as.matrix(dimred[-nrow(dimred),-1])
 rownames(dimred) <- rownames(expression)
 
 # read cell params
@@ -98,17 +94,16 @@ if (any(is.na(ll))) {
 pseudotime <- cpara %>% {set_names(.$time, rownames(.))}
 esp <- cpara %>% select(-time) %>% tibble::rownames_to_column("cell_id")
 
-# return output
-output <- lst(
-  cell_ids = names(pseudotime),
-  end_state_probabilities = esp,
-  pseudotime,
-  do_scale_minmax = TRUE,
-  dimred = dimred %>% as.matrix,
-  timings = checkpoints
-)
-
 #   ____________________________________________________________________________
 #   Save output                                                             ####
 
-write_rds(output, "/ti/output/output.rds")
+output <- dynwrap::wrap_data(cell_ids = names(pseudotime)) %>%
+  dynwrap::add_end_state_probabilities(
+    end_state_probabilities = esp,
+    pseudotime = pseudotime,
+    do_scale_minmax = TRUE
+  ) %>%
+  dynwrap::add_dimred(dimred = dimred) %>%
+  dynwrap::add_timings(timings = checkpoints)
+
+output %>% dyncli::write_output(task$output)
