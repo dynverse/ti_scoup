@@ -28,7 +28,6 @@ wrapper:
   - linear
   - bifurcation
   - multifurcation
-  example: /code/example.R
   input_required:
   - expression
   - groups_id
