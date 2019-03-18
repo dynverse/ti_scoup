@@ -60,32 +60,32 @@ parameters:
       lower: 2
     description: Upper bound of EM iteration (including pseudo-time optimization).
   - id: alpha
-    type: range
+    type: numeric_range
     default:
     - 0.1
     - 100.0
     upper_distribution:
       type: expuniform
-      upper: 10.0
       lower: 0.001
+      upper: 10.0
     lower_distribution:
       type: expuniform
-      upper: 10.0
       lower: 0.001
+      upper: 10.0
     description: Bounds of alpha.
   - id: t
-    type: range
+    type: numeric_range
     default:
     - 0.001
     - 2.0
     upper_distribution:
       type: expuniform
-      upper: 1.0
       lower: 1.0e-05
+      upper: 1.0
     lower_distribution:
       type: expuniform
-      upper: 1.0
       lower: 1.0e-05
+      upper: 1.0
     description: Bounds of pseudo-time.
   - id: sigma_squared
     type: numeric
