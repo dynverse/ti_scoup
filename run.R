@@ -11,7 +11,7 @@ library(purrr)
 #   Load data                                                               ####
 
 expression <- as.matrix(task$expression)
-params <- task$params
+parameters <- task$parameters
 groups_id <- task$priors$groups_id
 start_id <- task$priors$start_id
 end_n <- task$priors$end_n
@@ -48,7 +48,7 @@ utils::write.table(distr_df, file = "init", sep = "\t", row.names = FALSE, col.n
 checkpoints <- list(method_afterpreproc = as.numeric(Sys.time()))
 
 # execute sp
-cmd <- glue::glue("/SCOUP/sp data init time_sp dimred {ncol(expression)} {nrow(expression)} {params$ndim}")
+cmd <- glue::glue("/SCOUP/sp data init time_sp dimred {ncol(expression)} {nrow(expression)} {parameters$ndim}")
 cat(cmd, "\n", sep = "")
 system(cmd)
 
@@ -57,27 +57,27 @@ cmd <- paste0(
   "/SCOUP/scoup data init time_sp gpara cpara ll ",
   ncol(expression), " ", nrow(expression),
   " -k ", end_n,
-  " -m ", params$max_ite1,
-  " -M ", params$max_ite2,
-  " -a ", params$alpha[1],
-  " -A ", params$alpha[2],
-  " -t ", params$t[1],
-  " -T ", params$t[2],
-  " -s ", params$sigma_squared_min,
-  " -e ", params$thresh
+  " -m ", parameters$max_ite1,
+  " -M ", parameters$max_ite2,
+  " -a ", parameters$alpha[1],
+  " -A ", parameters$alpha[2],
+  " -t ", parameters$t[1],
+  " -T ", parameters$t[2],
+  " -s ", parameters$sigma_squared_min,
+  " -e ", parameters$thresh
 )
 cat(cmd, "\n", sep = "")
 system(cmd)
 
 # read dimred
-dimred <- utils::read.table("dimred", col.names = c("i", paste0("Comp", seq_len(params$ndim))))
+dimred <- utils::read.table("dimred", col.names = c("i", paste0("Comp", seq_len(parameters$ndim))))
 
 # last line is root node
 root <- dimred[nrow(dimred),-1,drop=F]
 dimred <- as.matrix(dimred[-nrow(dimred),-1])
 rownames(dimred) <- rownames(expression)
 
-# read cell params
+# read cell parameters
 cpara <- utils::read.table("cpara", col.names = c("time", paste0("M", seq_len(end_n))))
 rownames(cpara) <- rownames(expression)
 
