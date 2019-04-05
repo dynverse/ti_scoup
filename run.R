@@ -1,24 +1,19 @@
-library(jsonlite)
-library(readr)
-library(dplyr)
-library(purrr)
+#!/usr/local/bin/Rscript
+
+task <- dyncli::main()
+
+library(dplyr, warn.conflicts = FALSE)
+library(purrr, warn.conflicts = FALSE)
+library(dynwrap, warn.conflicts = FALSE)
 
 #   ____________________________________________________________________________
 #   Load data                                                               ####
 
-data <- read_rds("/ti/input/data.rds")
-params <- jsonlite::read_json("/ti/input/params.json")
-
-#' @examples
-#' data <- dyntoy::generate_dataset(id = "test", num_cells = 300, num_features = 300, model = "linear") %>% c(., .$prior_information)
-#' params <- yaml::read_yaml("containers/scoup/definition.yml")$parameters %>%
-#'   {.[names(.) != "forbidden"]} %>%
-#'   map(~ .$default)
-
-expression <- data$expression
-groups_id <- data$groups_id
-start_id <- data$start_id
-end_n <- data$end_n
+expression <- as.matrix(task$expression)
+parameters <- task$parameters
+groups_id <- task$priors$groups_id
+start_id <- task$priors$start_id
+end_n <- task$priors$end_n
 
 #   ____________________________________________________________________________
 #   Infer trajectory                                                        ####
@@ -52,7 +47,7 @@ utils::write.table(distr_df, file = "init", sep = "\t", row.names = FALSE, col.n
 checkpoints <- list(method_afterpreproc = as.numeric(Sys.time()))
 
 # execute sp
-cmd <- glue::glue("/SCOUP/sp data init time_sp dimred {ncol(expression)} {nrow(expression)} {params$ndim}")
+cmd <- glue::glue("/SCOUP/sp data init time_sp dimred {ncol(expression)} {nrow(expression)} {parameters$ndim}")
 cat(cmd, "\n", sep = "")
 system(cmd)
 
@@ -61,27 +56,27 @@ cmd <- paste0(
   "/SCOUP/scoup data init time_sp gpara cpara ll ",
   ncol(expression), " ", nrow(expression),
   " -k ", end_n,
-  " -m ", params$max_ite1,
-  " -M ", params$max_ite2,
-  " -a ", params$alpha_min,
-  " -A ", params$alpha_max,
-  " -t ", params$t_min,
-  " -T ", params$t_max,
-  " -s ", params$sigma_squared_min,
-  " -e ", params$thresh
+  " -m ", parameters$max_ite1,
+  " -M ", parameters$max_ite2,
+  " -a ", parameters$alpha[1],
+  " -A ", parameters$alpha[2],
+  " -t ", parameters$t[1],
+  " -T ", parameters$t[2],
+  " -s ", parameters$sigma_squared_min,
+  " -e ", parameters$thresh
 )
 cat(cmd, "\n", sep = "")
 system(cmd)
 
 # read dimred
-dimred <- utils::read.table("dimred", col.names = c("i", paste0("Comp", seq_len(params$ndim))))
+dimred <- utils::read.table("dimred", col.names = c("i", paste0("Comp", seq_len(parameters$ndim))))
 
 # last line is root node
 root <- dimred[nrow(dimred),-1,drop=F]
-dimred <- dimred[-nrow(dimred),-1]
+dimred <- as.matrix(dimred[-nrow(dimred),-1])
 rownames(dimred) <- rownames(expression)
 
-# read cell params
+# read cell parameters
 cpara <- utils::read.table("cpara", col.names = c("time", paste0("M", seq_len(end_n))))
 rownames(cpara) <- rownames(expression)
 
@@ -98,17 +93,16 @@ if (any(is.na(ll))) {
 pseudotime <- cpara %>% {set_names(.$time, rownames(.))}
 esp <- cpara %>% select(-time) %>% tibble::rownames_to_column("cell_id")
 
-# return output
-output <- lst(
-  cell_ids = names(pseudotime),
-  end_state_probabilities = esp,
-  pseudotime,
-  do_scale_minmax = TRUE,
-  dimred = dimred %>% as.matrix,
-  timings = checkpoints
-)
-
 #   ____________________________________________________________________________
 #   Save output                                                             ####
 
-write_rds(output, "/ti/output/output.rds")
+output <- dynwrap::wrap_data(cell_ids = names(pseudotime)) %>%
+  dynwrap::add_end_state_probabilities(
+    end_state_probabilities = esp,
+    pseudotime = pseudotime,
+    do_scale_minmax = TRUE
+  ) %>%
+  dynwrap::add_dimred(dimred = dimred) %>%
+  dynwrap::add_timings(timings = checkpoints)
+
+output %>% dyncli::write_output(task$output)
